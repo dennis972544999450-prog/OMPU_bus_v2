@@ -161,6 +161,9 @@ async function main() {
       senderAclDenied = true;
       senderAclError = safeError(error);
     }
+    const senderAclExplicit =
+      senderAclDenied &&
+      /permission/i.test(senderAclError?.message || "");
 
     stage = "offline-publish";
     await close(residentA);
@@ -188,7 +191,7 @@ async function main() {
         JSON.stringify(published) === JSON.stringify([1, 2]) &&
         JSON.stringify(readA) === JSON.stringify([1, 2]) &&
         JSON.stringify(readB) === JSON.stringify([1, 2]) &&
-        senderAclDenied &&
+        senderAclExplicit &&
         offlineSequence === 3 &&
         bOfflineRead === 3 &&
         aResumedRead === 3 &&
@@ -208,6 +211,7 @@ async function main() {
       },
       sender_acl: {
         denied_cross_subject_publish: senderAclDenied,
+        explicit_permission_error: senderAclExplicit,
         error: senderAclError,
       },
       offline_resume: {

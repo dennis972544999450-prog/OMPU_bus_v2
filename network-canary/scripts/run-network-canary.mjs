@@ -33,6 +33,7 @@ const startedAt = new Date().toISOString();
 let clientProof = null;
 let toolchainProof = null;
 let tlsProof = null;
+let tlsNegativeProof = null;
 let errorProof = null;
 let teardown = null;
 let serverLogPath = null;
@@ -75,6 +76,51 @@ try {
   );
   await waitForPort(wssPort, runtime.server);
 
+  const openssl = process.env.OMPU_OPENSSL || "openssl";
+  const tlsNegative = spawnSync(
+    openssl,
+    [
+      "s_client",
+      "-connect",
+      `localhost:${wssPort}`,
+      "-servername",
+      "localhost",
+      "-verify_return_error",
+      "-brief",
+    ],
+    {
+      cwd: NETWORK_ROOT,
+      env: { ...process.env },
+      input: "",
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024,
+      timeout: 15_000,
+    },
+  );
+  const tlsNegativeDiagnostic = redactSensitiveText(
+    `${tlsNegative.stdout || ""}\n${tlsNegative.stderr || ""}`,
+  );
+  const certificateRejectionObserved =
+    tlsNegative.status !== 0 &&
+    /certificate verify error|self.signed|unable to get local issuer|unknown ca/i.test(
+      tlsNegativeDiagnostic,
+    );
+  if (!certificateRejectionObserved) {
+    const error = new Error(
+      `negative TLS control did not produce an explicit certificate rejection: ${tlsNegativeDiagnostic}`,
+    );
+    error.code = "TLS_NEGATIVE_CONTROL_FAILED";
+    throw error;
+  }
+  tlsNegativeProof = {
+    pass: true,
+    trusted_ca_supplied: false,
+    connection_established: false,
+    certificate_rejection_observed: true,
+    verifier: "openssl-s_client",
+  };
+  assertSecretFree(tlsNegativeProof, "negative TLS proof");
+
   const resultPath = path.join(runtime.root, "client-result.json");
   const childConfig = {
     wssUrl: `wss://localhost:${wssPort}`,
@@ -91,6 +137,7 @@ try {
       env: {
         ...process.env,
         NODE_EXTRA_CA_CERTS: tls.caCert,
+        NODE_TLS_REJECT_UNAUTHORIZED: "1",
         OMPU_NETWORK_CANARY_CLIENT: JSON.stringify(childConfig),
       },
       encoding: "utf8",
@@ -139,7 +186,12 @@ const proof = {
     credentials_retained: false,
   },
   toolchain: toolchainProof,
-  tls: tlsProof,
+  tls: tlsProof
+    ? {
+        ...tlsProof,
+        negative_control: tlsNegativeProof,
+      }
+    : null,
   network: clientProof,
   teardown,
   error: errorProof,

@@ -31,6 +31,8 @@ also checksum-verified NATS Server 2.14.3 and NSC 2.15.0, generated a one-day
 local CA plus ten-minute synthetic resident credentials, and proved:
 
 - both residents read stream sequences 1 and 2;
+- a client without the generated CA failed specifically at certificate
+  validation before the trusted client connected;
 - resident A could not publish on resident B's subject;
 - sequence 3 was published while A was offline and became A's first message
   after reconnect;
