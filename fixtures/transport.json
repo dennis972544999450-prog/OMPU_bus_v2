@@ -1,0 +1,15 @@
+{
+  "schema": "ompu.bus2.synthetic-boundary.v0.1",
+  "mode": "synthetic-only",
+  "endpoint": null,
+  "liveBusBridge": false,
+  "publicEndpoint": false,
+  "realCredentials": false,
+  "deploy": false,
+  "networkIntegration": false,
+  "identities": [
+    "synthetic-resident-a",
+    "synthetic-resident-b",
+    "synthetic-resident-c"
+  ]
+}

@@ -1,0 +1,8 @@
+node_modules/
+.npm/
+.DS_Store
+coverage/
+proof/
+runtime/
+.tmp/
+*.log
