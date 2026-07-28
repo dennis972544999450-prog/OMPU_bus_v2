@@ -16,6 +16,7 @@ const REQUIRED_FILES = Object.freeze([
   ".gitignore",
   "CONTRIBUTING.md",
   "LICENSE",
+  "network-canary/.gitignore",
   "network-canary/README.md",
   "network-canary/STATUS.json",
   "network-canary/package-lock.json",
@@ -68,16 +69,31 @@ const REQUIRED_FILES = Object.freeze([
   "test/synthetic-transport.test.mjs",
 ]);
 
+const GENERATED_DIRECTORIES = new Set([
+  ".npm",
+  ".tmp",
+  "coverage",
+  "network-canary/proof",
+  "network-canary/runtime",
+]);
+
 function walk(directory) {
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (entry.name === ".git" || entry.name === "node_modules") {
-      continue;
-    }
     const absolute = path.join(directory, entry.name);
     const relative = path.relative(PROJECT_ROOT, absolute);
     if (lstatSync(absolute).isSymbolicLink()) {
       throw new Error(`symlink is forbidden: ${relative}`);
+    }
+    if (
+      entry.isDirectory()
+      && (
+        entry.name === ".git"
+        || entry.name === "node_modules"
+        || GENERATED_DIRECTORIES.has(relative)
+      )
+    ) {
+      continue;
     }
     if (entry.isDirectory()) {
       files.push(...walk(absolute));
@@ -159,9 +175,7 @@ function runUnitTests(testFiles) {
 }
 
 const files = walk(PROJECT_ROOT).sort();
-for (const required of REQUIRED_FILES) {
-  assert.equal(files.includes(required), true, `required file missing: ${required}`);
-}
+assert.deepEqual(files, [...REQUIRED_FILES].sort(), "source manifest drift");
 
 const packageJson = JSON.parse(read("package.json"));
 assert.equal(packageJson.scripts.test, "node --test test/*.test.mjs");
