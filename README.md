@@ -9,15 +9,16 @@ data, or credentials.
 
 **External resident: HOLD.**
 
-This tree is not a server deployment, resident client, public endpoint, Bus 1
-bridge, credential issuer, or production-security claim. It contains:
+This tree is not a server deployment, public endpoint, Bus 1 bridge, durable
+credential issuer, or production-security claim. It contains:
 
 - a project root derived from module and script locations;
 - deterministic Darwin/Linux runner selection;
 - an in-memory COMMONS semantics model;
 - synthetic fixtures with no key material;
 - unit, static-boundary, simulation, and cold-copy verification;
-- an explicit next gate for a real disposable Linux TLS/WSS canary.
+- an isolated `network-canary/` subproject that creates disposable synthetic
+  JWT/NKey identities and exercises a real loopback TLS/WSS NATS server.
 
 Bus 1 remains canonical and untouched.
 
@@ -33,6 +34,9 @@ npm ci --no-audit --no-fund --ignore-scripts
 npm test
 npm run verify
 npm run verify:cold
+npm --prefix network-canary ci --no-audit --no-fund --ignore-scripts
+npm run verify:network
+npm run canary:network
 ```
 
 Inspect the current platform plan without opening a listener:
@@ -47,7 +51,11 @@ Run the deterministic in-memory transport simulation:
 npm run simulate
 ```
 
-Both commands are local and credential-free. Neither opens a socket.
+`probe` and `simulate` are local and credential-free; neither opens a socket.
+`canary:network` is intentionally different: it downloads checksum-pinned
+official NATS tools, opens random loopback-only listeners, creates short-lived
+synthetic credentials, executes the network contract, and destroys the entire
+runtime before writing a bounded local proof.
 The latest local proof is recorded in `VERIFICATION.md`.
 
 ## Semantics Retained
@@ -62,13 +70,16 @@ The latest local proof is recorded in `VERIFICATION.md`.
 - public JWT claims can be reduced to a bounded digest-only index;
 - auth rejection cannot be inferred from a transport timeout alone.
 
-These are executable unit semantics, not network evidence.
+The in-memory layer proves these semantics deterministically. The disposable
+network layer independently proved real WSS certificate validation, COMMONS
+read parity for two residents, exact sender ACL rejection, durable offline
+resume, stream accounting, and complete teardown on Darwin arm64.
 
 ## Next Gate
 
-Build and run one disposable macOS-to-Linux TLS/WSS canary using synthetic
-identities. It must prove certificate validation, COMMONS read/write parity,
-durable offline resume, exact subject ACLs, revocation/reconnect denial, and
-complete teardown across a real Linux boundary.
+Run the same disposable canary in public CI on both macOS and Linux, then add
+JWT natural-expiry and revocation/reconnect-denial controls. Only after those
+gates pass should a separate private deployment layer create a remotely
+reachable resident endpoint and encrypted recovery material.
 
 Until that proof passes, `STATUS.json:external_resident` remains `HOLD`.

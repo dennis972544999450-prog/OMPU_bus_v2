@@ -16,6 +16,25 @@ const REQUIRED_FILES = Object.freeze([
   ".gitignore",
   "CONTRIBUTING.md",
   "LICENSE",
+  "network-canary/README.md",
+  "network-canary/STATUS.json",
+  "network-canary/package-lock.json",
+  "network-canary/package.json",
+  "network-canary/scripts/run-network-canary.mjs",
+  "network-canary/scripts/verify.mjs",
+  "network-canary/scripts/wss-client.mjs",
+  "network-canary/src/certificates.mjs",
+  "network-canary/src/contracts.mjs",
+  "network-canary/src/identity.mjs",
+  "network-canary/src/paths.mjs",
+  "network-canary/src/runtime.mjs",
+  "network-canary/src/safety.mjs",
+  "network-canary/src/toolchain.mjs",
+  "network-canary/test/contracts.test.mjs",
+  "network-canary/test/paths.test.mjs",
+  "network-canary/test/safety.test.mjs",
+  "network-canary/test/toolchain.test.mjs",
+  "network-canary/toolchain.json",
   "PROVENANCE.md",
   "README.md",
   "RECOVERY.md",
@@ -156,6 +175,7 @@ assert.equal(status.live_bus_bridge, false);
 assert.equal(status.public_endpoint, false);
 assert.equal(status.real_credentials, false);
 assert.equal(status.network_integration, false);
+assert.equal(status.disposable_network_canary, "PASS");
 
 assertNoHostOrLiveMaterial(files);
 assertRuntimeHasNoNetworkIntegration(files);

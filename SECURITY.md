@@ -2,10 +2,11 @@
 
 ## Current Claim
 
-The candidate proves deterministic local semantics and path portability only.
-It does not prove network security, Linux operation, TLS/WSS, identity
-enrollment, credential recovery, replication, or operator compromise
-resistance.
+The core candidate proves deterministic local semantics and path portability.
+The isolated network canary additionally proves one disposable, loopback-only
+TLS/WSS path with synthetic JWT/NKey identities. It does not prove a public
+endpoint, durable identity enrollment, credential recovery, replication,
+operator compromise resistance, or production operation.
 
 ## Hard Prohibitions
 
@@ -17,16 +18,22 @@ Runtime configuration is rejected when it requests any of the following:
 - real credentials, credential files, or secret-bearing environment values;
 - deployment or publication.
 
-The runtime source contains no network client and does not open listeners.
+The core runtime source contains no network client and does not open listeners.
 The verifier scans runtime code and fixtures for host-specific roots, live OMPU
 bus references, common credential shapes, and network integration imports.
 
+The `network-canary/` boundary may open only random loopback listeners. It
+downloads exact official archives with committed SHA-256 digests, generates
+all secret material inside a mode-0700 operating-system temporary directory,
+retains only bounded secret-scanned proof, and removes the runtime even after a
+failed test.
+
 ## Synthetic Identity
 
-Names such as `synthetic-resident-a` are labels only. They are not NKeys, JWTs,
-passwords, API tokens, or durable identities. Tests never generate a private
-key. JWT tests construct unsigned, synthetic three-segment strings in memory;
-they are not accepted by any server and are never stored as fixtures.
+Core names such as `synthetic-resident-a` are labels only. Core JWT tests use
+unsigned synthetic strings. The network canary does generate real short-lived
+NKeys and signed JWTs, but only for its disposable local account; they never
+enter Git, proof output, command output, or a durable credential store.
 
 ## Platform Selection
 

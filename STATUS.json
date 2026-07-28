@@ -1,10 +1,12 @@
 {
   "schema": "ompu.bus2.portability-status.v0.1",
-  "phase": "synthetic-portability-candidate",
+  "phase": "disposable-network-canary-pass",
   "external_resident": "HOLD",
   "live_bus_bridge": false,
   "public_endpoint": false,
   "real_credentials": false,
   "network_integration": false,
-  "next_gate": "disposable-macos-to-linux-tls-wss-canary"
+  "disposable_network_canary": "PASS",
+  "network_canary_scope": "synthetic-loopback-tls-wss-jwt-jetstream",
+  "next_gate": "jwt-expiry-revocation-then-private-external-endpoint"
 }
