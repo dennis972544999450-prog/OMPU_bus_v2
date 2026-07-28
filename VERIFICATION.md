@@ -24,11 +24,14 @@ Date: 2026-07-28
 | `npm run canary:network` | PASS, real loopback TLS/WSS + JWT + JetStream |
 | `npm pack --dry-run --json` | PASS, no archive written |
 
-The verifier checked all declared source files, six direct test files, four
-Darwin/Linux architecture plans, absence of runtime network integration, and
-absence of credential-shaped or canonical-host material. The network canary
-also checksum-verified NATS Server 2.14.3 and NSC 2.15.0, generated a one-day
-local CA plus ten-minute synthetic resident credentials, and proved:
+The verifier checked the exact declared source manifest, six direct test files,
+four Darwin/Linux architecture plans, absence of runtime network integration,
+and absence of credential-shaped or canonical-host material. Dependency trees,
+coverage, temporary directories, and ignored `network-canary/proof` and
+`network-canary/runtime` evidence are excluded from the source manifest so a
+completed canary cannot change the verification result. The network canary also
+checksum-verified NATS Server 2.14.3 and NSC 2.15.0, generated a one-day local
+CA plus ten-minute synthetic resident credentials, and proved:
 
 - both residents read stream sequences 1 and 2;
 - a client without the generated CA failed specifically at certificate
