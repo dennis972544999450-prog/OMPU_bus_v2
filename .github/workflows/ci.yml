@@ -26,3 +26,26 @@ jobs:
       - run: npm ci --no-audit --no-fund --ignore-scripts
       - run: npm test
       - run: npm run verify
+
+  network-canary:
+    name: network-canary (${{ matrix.os }})
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: network-canary
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: network-canary/package-lock.json
+      - run: npm ci --no-audit --no-fund --ignore-scripts
+      - run: npm test
+      - run: npm run verify
+      - run: npm run canary

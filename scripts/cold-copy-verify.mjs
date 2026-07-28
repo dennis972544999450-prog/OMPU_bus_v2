@@ -37,17 +37,15 @@ try {
     recursive: true,
     filter(source) {
       const relative = path.relative(PROJECT_ROOT, source);
-      return ![
+      const blocked = new Set([
         ".git",
         "node_modules",
         ".npm",
         "coverage",
         "proof",
         "runtime",
-      ].some(
-        (blocked) =>
-          relative === blocked || relative.startsWith(`${blocked}${path.sep}`),
-      );
+      ]);
+      return !relative.split(path.sep).some((segment) => blocked.has(segment));
     },
   });
   mkdirSync(home, { recursive: true });

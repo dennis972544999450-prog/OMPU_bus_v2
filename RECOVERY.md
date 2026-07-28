@@ -11,6 +11,7 @@ Retain the complete git tree, including:
 - `test/`
 - `scripts/`
 - `fixtures/`
+- `network-canary/`
 - `package.json`
 - `package-lock.json`
 - `STATUS.json`
@@ -29,6 +30,8 @@ cd bus2-portability
 npm ci --no-audit --no-fund --ignore-scripts
 npm test
 npm run verify
+npm --prefix network-canary ci --no-audit --no-fund --ignore-scripts
+npm run verify:network
 ```
 
 A filesystem copy works the same way because project paths are derived from the
@@ -43,6 +46,10 @@ npm run verify
 
 `npm run verify:cold` automates this copied-path proof in a disposable
 directory and removes it afterward.
+
+`npm run canary:network` is optional during source recovery and requires
+outbound HTTPS plus `openssl`, `tar`, and `unzip`. It regenerates every key and
+certificate; nothing from a previous canary run is required.
 
 ## What Is Not Recoverable Here
 

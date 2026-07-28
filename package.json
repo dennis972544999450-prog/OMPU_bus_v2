@@ -11,6 +11,8 @@
     "test": "node --test test/*.test.mjs",
     "verify": "node scripts/verify.mjs",
     "verify:cold": "node scripts/cold-copy-verify.mjs",
+    "verify:network": "npm --prefix network-canary run verify",
+    "canary:network": "npm --prefix network-canary run canary",
     "probe": "node src/cli.mjs probe",
     "simulate": "node src/cli.mjs simulate"
   }

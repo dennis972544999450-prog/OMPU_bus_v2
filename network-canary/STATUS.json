@@ -1,0 +1,11 @@
+{
+  "schema": "ompu.bus2.network-canary-status.v0.1",
+  "phase": "disposable-loopback-gate",
+  "external_resident": "HOLD",
+  "synthetic_only": true,
+  "loopback_only": true,
+  "public_endpoint": false,
+  "live_bus_bridge": false,
+  "retained_credentials": false,
+  "next_gate": "jwt-expiry-revocation-then-private-external-endpoint"
+}

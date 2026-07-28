@@ -1,0 +1,19 @@
+{
+  "name": "ompu-bus-v2-network-canary",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Disposable loopback TLS/WSS NATS portability canary",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "verify": "node scripts/verify.mjs",
+    "canary": "node scripts/run-network-canary.mjs"
+  },
+  "dependencies": {
+    "@nats-io/jetstream": "3.4.0",
+    "@nats-io/nats-core": "3.4.0"
+  }
+}

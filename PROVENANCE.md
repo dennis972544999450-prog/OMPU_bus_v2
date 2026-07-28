@@ -27,6 +27,10 @@ The bounded derivation is explicit:
   idempotency, cursor, and revocation semantics without a broker;
 - runner modules replace the former machine-bound shell wrapper with inert
   Darwin/Linux plans. They do not execute NATS or generate credentials.
+- `network-canary/` is a separately bounded implementation using the public
+  NATS Server, NSC, nats-core, and JetStream interfaces. It generates a new
+  synthetic trust hierarchy for every run and carries no laboratory runtime or
+  credential material.
 
 ## Deliberate Behavioral Correction
 
