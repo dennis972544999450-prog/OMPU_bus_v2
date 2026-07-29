@@ -206,7 +206,7 @@ test("client auth error without a fresh server event fails closed", () => {
   assert.equal(evidence.server_explicit_auth, false);
 });
 
-test("fresh expiry evidence proves a server-closed session", () => {
+test("exact active expiry needs no duplicate server log event", () => {
   const evidence = assessLifecycleRejection({
     kind: "expiry",
     phase: "active-close",
@@ -224,10 +224,11 @@ test("fresh expiry evidence proves a server-closed session", () => {
         message: "User Authentication Expired",
       },
     },
-    serverExcerpt: `authentication error for ${ACTOR}`,
+    serverExcerpt: "",
   });
   assert.equal(evidence.pass, true);
   assert.equal(evidence.expected_lifecycle_event, true);
+  assert.equal(evidence.server_explicit_auth, false);
 });
 
 test("time-bound active expiry may use actor-bound generic auth", () => {

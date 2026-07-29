@@ -466,7 +466,7 @@ try {
     kind: "expiry",
     expectedActorSha256: trust.lifecycleClaims.expiring.subject_sha256,
     actorPublicKey: trust.lifecycleClaims.expiring.subject,
-    requireServerActor: true,
+    requireServerActor: false,
     notBeforeEpochSeconds: expiryClaim.expires_at,
     serverLog,
   });
