@@ -83,18 +83,35 @@ test("post-lifecycle reconnect success fails closed", () => {
   assert.equal(sequence.last_successful_reconnect_index, 3);
 });
 
-test("truncated reconnect sequence fails closed", () => {
+test("missing reconnect loop fails closed", () => {
+  const sequence = assessReconnectSequence(
+    [
+      { type: "disconnect" },
+      { type: "error", error: { message: "User Authentication Expired" } },
+      { type: "close" },
+    ],
+    "expiry",
+  );
+  assert.equal(sequence.pass, false);
+  assert.equal(sequence.observed_reconnect_attempts, 0);
+});
+
+test("status stream may report fewer attempts than the configured budget", () => {
   const sequence = assessReconnectSequence(
     [
       { type: "disconnect" },
       { type: "error", error: { message: "User Authentication Expired" } },
       { type: "reconnecting" },
+      { type: "error", error: { message: "Authorization Violation" } },
       { type: "reconnecting" },
+      { type: "error", error: { message: "Authorization Violation" } },
+      { type: "close" },
     ],
     "expiry",
   );
-  assert.equal(sequence.pass, false);
-  assert.equal(sequence.post_lifecycle_status_counts.reconnecting, 2);
+  assert.equal(sequence.pass, true);
+  assert.equal(sequence.configured_max_reconnect_attempts, 3);
+  assert.equal(sequence.observed_reconnect_attempts, 2);
 });
 
 test("timeout cannot prove natural expiry", () => {

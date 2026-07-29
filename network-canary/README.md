@@ -32,7 +32,8 @@ exits nonzero.
 
 Current boundary: real TLS/WSS, synthetic residents, sender ACL, COMMONS
 read/write parity, durable offline resume, natural JWT expiry, live
-resolver-backed revocation, three bounded automatic reconnect attempts, fresh
-connection denial, a healthy-resident control after each denial, and teardown.
+resolver-backed revocation, automatic reconnect attempts capped at three,
+fresh connection denial, a healthy-resident control after each denial, and
+teardown.
 The next gate is private external enrollment and encrypted recovery;
 `STATUS.json` remains `HOLD`.

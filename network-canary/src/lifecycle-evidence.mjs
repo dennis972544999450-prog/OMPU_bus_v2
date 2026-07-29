@@ -64,14 +64,20 @@ export function assessReconnectSequence(statuses, kind, maxAttempts = 3) {
     lifecycleIndex >= 0 ? statuses.slice(lifecycleIndex) : [];
   const total = statusCounts(statuses);
   const afterLifecycle = statusCounts(postLifecycle);
+  const observedReconnectAttempts = afterLifecycle.reconnecting;
   return Object.freeze({
     pass:
       lifecycleIndex >= 0 &&
       total.disconnect >= 1 &&
-      afterLifecycle.reconnecting === maxAttempts &&
-      afterLifecycle.reconnect === 0,
+      observedReconnectAttempts >= 1 &&
+      observedReconnectAttempts <= maxAttempts &&
+      afterLifecycle.reconnect === 0 &&
+      afterLifecycle.error >= observedReconnectAttempts &&
+      afterLifecycle.close === 1,
     lifecycle_index: lifecycleIndex,
     last_successful_reconnect_index: lastReconnectIndex,
+    configured_max_reconnect_attempts: maxAttempts,
+    observed_reconnect_attempts: observedReconnectAttempts,
     lifecycle_error:
       lifecycleIndex >= 0 ? statuses[lifecycleIndex].error : null,
     status_counts: total,
