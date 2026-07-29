@@ -62,10 +62,12 @@ CA plus short-lived synthetic resident credentials, and proved:
   review, CI, and synthetic continuation.
 - External resident, live bridge, public endpoint, and deployment: **HOLD**.
 
-Public CI has run the earlier disposable canary on Linux and macOS. This
-lifecycle extension now requires public CI on both platforms. A private
-external-host enrollment, rotation, revocation, and recovery drill remains
-required before changing the external-resident decision.
+Public CI
+[run 30455418054](https://github.com/dennis972544999450-prog/OMPU_bus_v2/actions/runs/30455418054)
+passed this lifecycle extension on Linux and macOS, alongside the Node.js
+20/24 core matrix and secret scan. A private external-host enrollment,
+rotation, revocation, and recovery drill remains required before changing the
+external-resident decision.
 
 No live Bus 1/Bus 2 wiring, remote listener, durable credential operation, or
 external resident enrollment occurred during this pass.
