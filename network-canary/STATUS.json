@@ -7,5 +7,8 @@
   "public_endpoint": false,
   "live_bus_bridge": false,
   "retained_credentials": false,
+  "runtime_canary": "RUN_REQUIRED",
+  "runtime_proof_path": "proof/latest.json",
+  "runtime_proof_committed": false,
   "next_gate": "jwt-expiry-revocation-then-private-external-endpoint"
 }

@@ -65,6 +65,20 @@ assert.deepEqual(packageJson.dependencies, {
   "@nats-io/jetstream": "3.4.0",
   "@nats-io/nats-core": "3.4.0",
 });
+
+const status = JSON.parse(
+  readFileSync(resolveNetworkPath("STATUS.json"), "utf8"),
+);
+assert.equal(status.external_resident, "HOLD");
+assert.equal(status.synthetic_only, true);
+assert.equal(status.loopback_only, true);
+assert.equal(status.public_endpoint, false);
+assert.equal(status.live_bus_bridge, false);
+assert.equal(status.retained_credentials, false);
+assert.equal(status.runtime_canary, "RUN_REQUIRED");
+assert.equal(status.runtime_proof_path, "proof/latest.json");
+assert.equal(status.runtime_proof_committed, false);
+
 validateToolchainManifest();
 
 for (const file of files) {

@@ -2,6 +2,11 @@
 
 Date: 2026-07-28
 
+This is a dated execution receipt. It is not read as current runtime state by
+`npm run verify`: the checked-in status remains `RUN_REQUIRED`, while an actual
+canary run writes its result to ignored `network-canary/proof/latest.json` and
+exits nonzero unless that result is `PASS`.
+
 ## Local Environment
 
 - Darwin 25.3.0 arm64
@@ -49,8 +54,9 @@ CA plus ten-minute synthetic resident credentials, and proved:
   review, CI, and synthetic continuation.
 - External resident, live bridge, public endpoint, and deployment: **HOLD**.
 
-Linux CI, JWT natural-expiry/revocation, and a private external-host recovery
-drill remain required before changing the external-resident decision.
+Public CI has run the disposable canary on Linux and macOS. JWT natural-expiry
+and revocation/reconnect denial plus a private external-host recovery drill
+remain required before changing the external-resident decision.
 
 No live Bus 1/Bus 2 wiring, remote listener, durable credential operation, or
 external resident enrollment occurred during this pass.
