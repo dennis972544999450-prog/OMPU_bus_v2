@@ -155,6 +155,7 @@ async function finishAwaitCloseFixture({
   actorPublicKey,
   requireServerActor,
   controlBound = false,
+  notBeforeEpochSeconds = null,
   serverLog,
 }) {
   if (!(await waitForProcessExit(handle.child, 90_000))) {
@@ -167,8 +168,17 @@ async function finishAwaitCloseFixture({
     error.code = "LIFECYCLE_CLIENT_FAILED";
     throw error;
   }
+  if (!existsSync(handle.resultPath)) {
+    const error = new Error(`${kind} fixture exited without a result`);
+    error.code = "LIFECYCLE_RESULT_MISSING";
+    throw error;
+  }
   const clientResult = readJson(handle.resultPath);
   const serverExcerpt = lifecycleLogExcerpt(serverLog, handle.logOffset);
+  const timeControlBound =
+    Number.isSafeInteger(notBeforeEpochSeconds) &&
+    handle.ready.ready_at < notBeforeEpochSeconds &&
+    Math.floor(Date.now() / 1000) >= notBeforeEpochSeconds;
   return {
     client: clientResult,
     evidence: assessLifecycleRejection({
@@ -178,7 +188,7 @@ async function finishAwaitCloseFixture({
       expectedActorSha256,
       actorPublicKey,
       requireServerActor,
-      controlBound,
+      controlBound: controlBound || timeControlBound,
       clientResult,
       serverExcerpt,
     }),
@@ -229,6 +239,11 @@ function runRejectedFixture({
       )}`,
     );
     error.code = "LIFECYCLE_RECONNECT_CLIENT_FAILED";
+    throw error;
+  }
+  if (!existsSync(resultPath)) {
+    const error = new Error(`${kind} reconnect fixture exited without a result`);
+    error.code = "LIFECYCLE_RESULT_MISSING";
     throw error;
   }
   const clientResult = readJson(resultPath);
@@ -286,6 +301,11 @@ function runHealthyControl({
       )}`,
     );
     error.code = "LIFECYCLE_HEALTHY_CONTROL_FAILED";
+    throw error;
+  }
+  if (!existsSync(resultPath)) {
+    const error = new Error("healthy control exited without a result");
+    error.code = "LIFECYCLE_RESULT_MISSING";
     throw error;
   }
   const result = readJson(resultPath);
@@ -428,6 +448,7 @@ try {
   assertSecretFree(clientProof, "client proof");
 
   const wssUrl = `wss://localhost:${wssPort}`;
+  const expiryClaim = trust.lifecycleClaims.expiring;
   const expiryHandle = await startAwaitCloseFixture({
     runtime,
     kind: "expiry",
@@ -446,9 +467,9 @@ try {
     expectedActorSha256: trust.lifecycleClaims.expiring.subject_sha256,
     actorPublicKey: trust.lifecycleClaims.expiring.subject,
     requireServerActor: false,
+    notBeforeEpochSeconds: expiryClaim.expires_at,
     serverLog,
   });
-  const expiryClaim = trust.lifecycleClaims.expiring;
   const expiryControlBound =
     expiryClosed.client.pass &&
     expiryClosed.evidence.pass &&

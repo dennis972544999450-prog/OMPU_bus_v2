@@ -17,6 +17,7 @@ import {
 const config = JSON.parse(
   process.env.OMPU_NETWORK_LIFECYCLE_CLIENT || "{}",
 );
+const MAX_RECONNECT_ATTEMPTS = 3;
 
 function requiredString(name) {
   const value = config[name];
@@ -46,7 +47,7 @@ function connectionOptions(authenticator, reconnect) {
     name: requiredString("label"),
     inboxPrefix: "_INBOX.OMPU.NET.LIFECYCLE",
     reconnect,
-    maxReconnectAttempts: reconnect ? 3 : 0,
+    maxReconnectAttempts: reconnect ? MAX_RECONNECT_ATTEMPTS : 0,
     reconnectTimeWait: 200,
     reconnectJitter: 0,
     reconnectJitterTLS: 0,
@@ -123,7 +124,7 @@ async function awaitServerClose() {
     const sequence = assessReconnectSequence(
       statuses,
       requiredString("kind"),
-      3,
+      MAX_RECONNECT_ATTEMPTS,
     );
     return {
       attempt_id: requiredString("attemptId"),
@@ -136,6 +137,10 @@ async function awaitServerClose() {
       status_counts: sequence.status_counts,
       post_lifecycle_status_counts:
         sequence.post_lifecycle_status_counts,
+      configured_max_reconnect_attempts:
+        sequence.configured_max_reconnect_attempts,
+      observed_reconnect_attempts:
+        sequence.observed_reconnect_attempts,
     };
   } finally {
     bytes.fill(0);
@@ -215,7 +220,9 @@ async function main() {
   writeBoundedJson(requiredString("resultPath"), result);
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   const resultPath = config.resultPath;
   if (typeof resultPath === "string" && resultPath.length > 0) {
     writeBoundedJson(resultPath, {
@@ -227,4 +234,4 @@ main().catch((error) => {
     });
   }
   process.exitCode = 1;
-});
+}

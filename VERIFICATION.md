@@ -24,7 +24,7 @@ exits nonzero unless that result is `PASS`.
 | `./scripts/verify.sh` | PASS |
 | `npm run probe` | PASS, inert Darwin arm64 plan |
 | `npm run simulate` | PASS, deterministic in-memory semantics |
-| `npm --prefix network-canary test` | PASS, 23 tests |
+| `npm --prefix network-canary test` | PASS, 27 tests |
 | `npm run verify:network` | PASS, 24 files and 6 unit files |
 | `npm run canary:network` | PASS, real loopback TLS/WSS + JWT lifecycle + JetStream |
 | `npm pack --dry-run --json` | PASS, no archive written |
@@ -45,11 +45,13 @@ CA plus short-lived synthetic resident credentials, and proved:
 - sequence 3 was published while A was offline and became A's first message
   after reconnect;
 - the final stream contained exactly three messages;
-- a one-minute JWT expired naturally, closed its active connection, exhausted
-  three automatic reconnect attempts, and rejected a fresh connection;
+- a one-minute JWT expired naturally, closed its active connection, and after
+  any clock-edge reconnect entered a terminal authentication loop capped at
+  three attempts without another successful reconnect, then rejected a fresh
+  connection;
 - a live account-JWT update revoked another resident, reached the resolver,
-  closed its active connection, exhausted three automatic reconnect attempts,
-  and rejected a fresh connection;
+  closed its active connection, entered the same bounded reconnect loop without
+  reconnecting, and rejected a fresh connection;
 - actor and attempt digests bound every lifecycle decision, while mixed
   authentication and transport evidence failed closed in unit tests;
 - an unaffected resident connected and flushed after each denial;
@@ -62,10 +64,12 @@ CA plus short-lived synthetic resident credentials, and proved:
   review, CI, and synthetic continuation.
 - External resident, live bridge, public endpoint, and deployment: **HOLD**.
 
-Public CI has run the earlier disposable canary on Linux and macOS. This
-lifecycle extension now requires public CI on both platforms. A private
-external-host enrollment, rotation, revocation, and recovery drill remains
-required before changing the external-resident decision.
+Public CI in
+[PR #5](https://github.com/dennis972544999450-prog/OMPU_bus_v2/pull/5)
+records the Linux/macOS lifecycle runs, Node.js 20/24 core matrix, secret scan,
+and the portability variants found along the way. A private external-host
+enrollment, rotation, revocation, and recovery drill remains required before
+changing the external-resident decision.
 
 No live Bus 1/Bus 2 wiring, remote listener, durable credential operation, or
 external resident enrollment occurred during this pass.

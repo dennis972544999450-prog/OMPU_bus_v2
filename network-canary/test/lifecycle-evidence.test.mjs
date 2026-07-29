@@ -64,6 +64,7 @@ test("pre-lifecycle reconnects do not contaminate denial accounting", () => {
   assert.equal(sequence.status_counts.reconnect, 1);
   assert.equal(sequence.post_lifecycle_status_counts.reconnect, 0);
   assert.equal(sequence.post_lifecycle_status_counts.reconnecting, 3);
+  assert.equal(sequence.terminal_auth_error, true);
 });
 
 test("post-lifecycle reconnect success fails closed", () => {
@@ -83,18 +84,57 @@ test("post-lifecycle reconnect success fails closed", () => {
   assert.equal(sequence.last_successful_reconnect_index, 3);
 });
 
-test("truncated reconnect sequence fails closed", () => {
+test("missing reconnect loop fails closed", () => {
+  const sequence = assessReconnectSequence(
+    [
+      { type: "disconnect" },
+      { type: "error", error: { message: "User Authentication Expired" } },
+      { type: "close" },
+    ],
+    "expiry",
+  );
+  assert.equal(sequence.pass, false);
+  assert.equal(sequence.observed_reconnect_attempts, 0);
+});
+
+test("generic terminal auth loop is retained for external lifecycle binding", () => {
+  const sequence = assessReconnectSequence(
+    [
+      { type: "disconnect" },
+      { type: "error", error: { message: "Authorization Violation" } },
+      { type: "reconnecting" },
+      { type: "reconnect" },
+      { type: "disconnect" },
+      { type: "error", error: { message: "Authorization Violation" } },
+      { type: "reconnecting" },
+      { type: "error", error: { message: "Authorization Violation" } },
+      { type: "reconnecting" },
+      { type: "close" },
+    ],
+    "expiry",
+  );
+  assert.equal(sequence.pass, true);
+  assert.equal(sequence.lifecycle_index, -1);
+  assert.equal(sequence.last_successful_reconnect_index, 3);
+  assert.equal(sequence.observed_reconnect_attempts, 2);
+});
+
+test("status stream may report fewer attempts than the configured budget", () => {
   const sequence = assessReconnectSequence(
     [
       { type: "disconnect" },
       { type: "error", error: { message: "User Authentication Expired" } },
       { type: "reconnecting" },
+      { type: "error", error: { message: "Authorization Violation" } },
       { type: "reconnecting" },
+      { type: "error", error: { message: "Authorization Violation" } },
+      { type: "close" },
     ],
     "expiry",
   );
-  assert.equal(sequence.pass, false);
-  assert.equal(sequence.post_lifecycle_status_counts.reconnecting, 2);
+  assert.equal(sequence.pass, true);
+  assert.equal(sequence.configured_max_reconnect_attempts, 3);
+  assert.equal(sequence.observed_reconnect_attempts, 2);
 });
 
 test("timeout cannot prove natural expiry", () => {
@@ -128,6 +168,7 @@ test("generic connection refusal cannot prove revocation", () => {
     clientResult: {
       attempt_id: ATTEMPT,
       actor_subject_sha256: ACTOR_SHA,
+      pass: true,
       outcome: "connect-threw",
       error: {
         code: "CONNECTION_REFUSED",
@@ -151,6 +192,7 @@ test("client auth error without a fresh server event fails closed", () => {
     clientResult: {
       attempt_id: ATTEMPT,
       actor_subject_sha256: ACTOR_SHA,
+      pass: true,
       outcome: "connect-threw",
       error: {
         code: "AUTHORIZATION_VIOLATION",
@@ -164,7 +206,7 @@ test("client auth error without a fresh server event fails closed", () => {
   assert.equal(evidence.server_explicit_auth, false);
 });
 
-test("fresh expiry evidence proves a server-closed session", () => {
+test("exact active expiry needs no duplicate server log event", () => {
   const evidence = assessLifecycleRejection({
     kind: "expiry",
     phase: "active-close",
@@ -175,16 +217,68 @@ test("fresh expiry evidence proves a server-closed session", () => {
     clientResult: {
       attempt_id: ATTEMPT,
       actor_subject_sha256: ACTOR_SHA,
+      pass: true,
       outcome: "connected-then-server-closed",
       error: {
         code: "AUTHORIZATION_VIOLATION",
         message: "User Authentication Expired",
       },
     },
-    serverExcerpt: `authentication error for ${ACTOR}`,
+    serverExcerpt: "",
   });
   assert.equal(evidence.pass, true);
   assert.equal(evidence.expected_lifecycle_event, true);
+  assert.equal(evidence.server_explicit_auth, false);
+});
+
+test("time-bound active expiry may use actor-bound generic auth", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "expiry",
+    phase: "active-close",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: true,
+    controlBound: true,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      pass: true,
+      outcome: "connected-then-server-closed",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "Authorization Violation",
+      },
+    },
+    serverExcerpt: `authentication error for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, true);
+  assert.equal(evidence.client_expected_lifecycle, false);
+  assert.equal(evidence.controlled_active_denial, true);
+});
+
+test("generic active auth cannot prove expiry without time control", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "expiry",
+    phase: "active-close",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: true,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      pass: true,
+      outcome: "connected-then-server-closed",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "Authorization Violation",
+      },
+    },
+    serverExcerpt: `authentication error for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, false);
+  assert.equal(evidence.controlled_active_denial, false);
 });
 
 test("generic actor-bound auth cannot prove fresh expiry without control", () => {
@@ -222,6 +316,7 @@ test("controlled actor-bound server denial proves fresh expiry", () => {
     clientResult: {
       attempt_id: ATTEMPT,
       actor_subject_sha256: ACTOR_SHA,
+      pass: true,
       outcome: "connect-threw",
       error: {
         code: "AUTHORIZATION_VIOLATION",
@@ -269,6 +364,7 @@ test("fresh revocation evidence proves reconnect denial", () => {
     clientResult: {
       attempt_id: ATTEMPT,
       actor_subject_sha256: ACTOR_SHA,
+      pass: true,
       outcome: "connect-threw",
       error: {
         code: "AUTHORIZATION_VIOLATION",
