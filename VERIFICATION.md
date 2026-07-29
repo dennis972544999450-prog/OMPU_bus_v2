@@ -1,6 +1,6 @@
 # Verification Receipt
 
-Date: 2026-07-28
+Date: 2026-07-29
 
 This is a dated execution receipt. It is not read as current runtime state by
 `npm run verify`: the checked-in status remains `RUN_REQUIRED`, while an actual
@@ -24,9 +24,9 @@ exits nonzero unless that result is `PASS`.
 | `./scripts/verify.sh` | PASS |
 | `npm run probe` | PASS, inert Darwin arm64 plan |
 | `npm run simulate` | PASS, deterministic in-memory semantics |
-| `npm --prefix network-canary test` | PASS, 6 tests |
-| `npm run verify:network` | PASS, 20 files and 4 unit files |
-| `npm run canary:network` | PASS, real loopback TLS/WSS + JWT + JetStream |
+| `npm --prefix network-canary test` | PASS, 23 tests |
+| `npm run verify:network` | PASS, 24 files and 6 unit files |
+| `npm run canary:network` | PASS, real loopback TLS/WSS + JWT lifecycle + JetStream |
 | `npm pack --dry-run --json` | PASS, no archive written |
 
 The verifier checked the exact declared source manifest, six direct test files,
@@ -36,7 +36,7 @@ coverage, temporary directories, and ignored `network-canary/proof` and
 `network-canary/runtime` evidence are excluded from the source manifest so a
 completed canary cannot change the verification result. The network canary also
 checksum-verified NATS Server 2.14.3 and NSC 2.15.0, generated a one-day local
-CA plus ten-minute synthetic resident credentials, and proved:
+CA plus short-lived synthetic resident credentials, and proved:
 
 - both residents read stream sequences 1 and 2;
 - a client without the generated CA failed specifically at certificate
@@ -45,8 +45,16 @@ CA plus ten-minute synthetic resident credentials, and proved:
 - sequence 3 was published while A was offline and became A's first message
   after reconnect;
 - the final stream contained exactly three messages;
-- the server process exited, both listeners closed, and all keys, credentials,
-  tools, logs, and JetStream state were removed.
+- a one-minute JWT expired naturally, closed its active connection, exhausted
+  three automatic reconnect attempts, and rejected a fresh connection;
+- a live account-JWT update revoked another resident, reached the resolver,
+  closed its active connection, exhausted three automatic reconnect attempts,
+  and rejected a fresh connection;
+- actor and attempt digests bound every lifecycle decision, while mixed
+  authentication and transport evidence failed closed in unit tests;
+- an unaffected resident connected and flushed after each denial;
+- the server and child processes exited, both listeners closed, and all keys,
+  credentials, tools, logs, and JetStream state were removed.
 
 ## Decision
 
@@ -54,9 +62,10 @@ CA plus ten-minute synthetic resident credentials, and proved:
   review, CI, and synthetic continuation.
 - External resident, live bridge, public endpoint, and deployment: **HOLD**.
 
-Public CI has run the disposable canary on Linux and macOS. JWT natural-expiry
-and revocation/reconnect denial plus a private external-host recovery drill
-remain required before changing the external-resident decision.
+Public CI has run the earlier disposable canary on Linux and macOS. This
+lifecycle extension now requires public CI on both platforms. A private
+external-host enrollment, rotation, revocation, and recovery drill remains
+required before changing the external-resident decision.
 
 No live Bus 1/Bus 2 wiring, remote listener, durable credential operation, or
 external resident enrollment occurred during this pass.

@@ -49,7 +49,10 @@ directory and removes it afterward.
 
 `npm run canary:network` is optional during source recovery and requires
 outbound HTTPS plus `openssl`, `tar`, and `unzip`. It regenerates every key and
-certificate; nothing from a previous canary run is required.
+certificate, then exercises expiry and resolver-backed revocation. Nothing from
+a previous canary run is required; the full loopback lifecycle run normally
+takes a little over one minute because it waits for a real one-minute JWT to
+expire.
 
 ## What Is Not Recoverable Here
 

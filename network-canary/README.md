@@ -30,6 +30,9 @@ Static `npm run verify` proves the source boundary and reports
 Only `npm run canary` writes a runtime `PASS`, and a failed or unavailable run
 exits nonzero.
 
-Current boundary: real TLS/WSS, two synthetic residents, sender ACL, COMMONS
-read/write parity, durable offline resume, and teardown. JWT expiry/revocation
-is a separate next subgate and `STATUS.json` remains `HOLD`.
+Current boundary: real TLS/WSS, synthetic residents, sender ACL, COMMONS
+read/write parity, durable offline resume, natural JWT expiry, live
+resolver-backed revocation, three bounded automatic reconnect attempts, fresh
+connection denial, a healthy-resident control after each denial, and teardown.
+The next gate is private external enrollment and encrypted recovery;
+`STATUS.json` remains `HOLD`.

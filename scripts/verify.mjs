@@ -21,18 +21,22 @@ const REQUIRED_FILES = Object.freeze([
   "network-canary/STATUS.json",
   "network-canary/package-lock.json",
   "network-canary/package.json",
+  "network-canary/scripts/lifecycle-client.mjs",
   "network-canary/scripts/run-network-canary.mjs",
   "network-canary/scripts/verify.mjs",
   "network-canary/scripts/wss-client.mjs",
   "network-canary/src/certificates.mjs",
   "network-canary/src/contracts.mjs",
   "network-canary/src/identity.mjs",
+  "network-canary/src/lifecycle-evidence.mjs",
   "network-canary/src/paths.mjs",
   "network-canary/src/runtime.mjs",
   "network-canary/src/safety.mjs",
   "network-canary/src/toolchain.mjs",
   "network-canary/test/contracts.test.mjs",
+  "network-canary/test/lifecycle-evidence.test.mjs",
   "network-canary/test/paths.test.mjs",
+  "network-canary/test/runtime.test.mjs",
   "network-canary/test/safety.test.mjs",
   "network-canary/test/toolchain.test.mjs",
   "network-canary/toolchain.json",
@@ -184,7 +188,7 @@ assert.equal(Object.keys(packageJson.dependencies || {}).length, 0);
 assert.equal(Object.keys(packageJson.devDependencies || {}).length, 0);
 
 const status = JSON.parse(read("STATUS.json"));
-assert.equal(status.phase, "disposable-network-canary-source-ready");
+assert.equal(status.phase, "jwt-lifecycle-canary-source-ready");
 assert.equal(status.external_resident, "HOLD");
 assert.equal(status.live_bus_bridge, false);
 assert.equal(status.public_endpoint, false);

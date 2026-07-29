@@ -17,17 +17,21 @@ const REQUIRED = [
   "package-lock.json",
   "package.json",
   "scripts/run-network-canary.mjs",
+  "scripts/lifecycle-client.mjs",
   "scripts/verify.mjs",
   "scripts/wss-client.mjs",
   "src/certificates.mjs",
   "src/contracts.mjs",
   "src/identity.mjs",
+  "src/lifecycle-evidence.mjs",
   "src/paths.mjs",
   "src/runtime.mjs",
   "src/safety.mjs",
   "src/toolchain.mjs",
   "test/contracts.test.mjs",
+  "test/lifecycle-evidence.test.mjs",
   "test/paths.test.mjs",
+  "test/runtime.test.mjs",
   "test/safety.test.mjs",
   "test/toolchain.test.mjs",
   "toolchain.json",
@@ -90,7 +94,7 @@ for (const file of files) {
 const tests = files
   .filter((file) => /^test\/[^/]+\.test\.mjs$/.test(file))
   .map((file) => resolveNetworkPath(file));
-assert.equal(tests.length, 4);
+assert.equal(tests.length, 6);
 const result = spawnSync(process.execPath, ["--test", ...tests], {
   cwd: NETWORK_ROOT,
   encoding: "utf8",

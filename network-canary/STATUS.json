@@ -1,6 +1,6 @@
 {
   "schema": "ompu.bus2.network-canary-status.v0.1",
-  "phase": "disposable-loopback-gate",
+  "phase": "jwt-lifecycle-loopback-gate",
   "external_resident": "HOLD",
   "synthetic_only": true,
   "loopback_only": true,
@@ -10,5 +10,5 @@
   "runtime_canary": "RUN_REQUIRED",
   "runtime_proof_path": "proof/latest.json",
   "runtime_proof_committed": false,
-  "next_gate": "jwt-expiry-revocation-then-private-external-endpoint"
+  "next_gate": "private-external-endpoint-enrollment-rotation-recovery"
 }

@@ -1,6 +1,6 @@
 {
   "schema": "ompu.bus2.portability-status.v0.1",
-  "phase": "disposable-network-canary-source-ready",
+  "phase": "jwt-lifecycle-canary-source-ready",
   "external_resident": "HOLD",
   "live_bus_bridge": false,
   "public_endpoint": false,
@@ -9,6 +9,6 @@
   "disposable_network_canary": "RUN_REQUIRED",
   "network_canary_runtime_proof": "network-canary/proof/latest.json",
   "network_canary_runtime_proof_committed": false,
-  "network_canary_scope": "synthetic-loopback-tls-wss-jwt-jetstream",
-  "next_gate": "jwt-expiry-revocation-then-private-external-endpoint"
+  "network_canary_scope": "synthetic-loopback-tls-wss-jwt-jetstream-expiry-revocation",
+  "next_gate": "private-external-endpoint-enrollment-rotation-recovery"
 }
