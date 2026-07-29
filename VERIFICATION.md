@@ -65,7 +65,7 @@ CA plus short-lived synthetic resident credentials, and proved:
 - External resident, live bridge, public endpoint, and deployment: **HOLD**.
 
 Public CI
-[run 30455418054](https://github.com/dennis972544999450-prog/OMPU_bus_v2/actions/runs/30455418054)
+[run 30457899478](https://github.com/dennis972544999450-prog/OMPU_bus_v2/actions/runs/30457899478)
 passed this lifecycle extension on Linux and macOS, alongside the Node.js
 20/24 core matrix and secret scan. A private external-host enrollment,
 rotation, revocation, and recovery drill remains required before changing the
