@@ -184,12 +184,18 @@ assert.equal(Object.keys(packageJson.dependencies || {}).length, 0);
 assert.equal(Object.keys(packageJson.devDependencies || {}).length, 0);
 
 const status = JSON.parse(read("STATUS.json"));
+assert.equal(status.phase, "disposable-network-canary-source-ready");
 assert.equal(status.external_resident, "HOLD");
 assert.equal(status.live_bus_bridge, false);
 assert.equal(status.public_endpoint, false);
 assert.equal(status.real_credentials, false);
 assert.equal(status.network_integration, false);
-assert.equal(status.disposable_network_canary, "PASS");
+assert.equal(status.disposable_network_canary, "RUN_REQUIRED");
+assert.equal(
+  status.network_canary_runtime_proof,
+  "network-canary/proof/latest.json",
+);
+assert.equal(status.network_canary_runtime_proof_committed, false);
 
 assertNoHostOrLiveMaterial(files);
 assertRuntimeHasNoNetworkIntegration(files);
@@ -227,11 +233,14 @@ console.log(
     {
       schema: "ompu.bus2.portability-verification.v0.1",
       status: "PASS",
+      verificationScope: "static-source-and-simulation",
       externalResident: "HOLD",
       filesChecked: files.length,
       unitFiles: testFiles.length,
       runnerPlansChecked: 4,
       networkIntegration: false,
+      realNetworkExecuted: false,
+      networkCanaryRuntime: "RUN_REQUIRED",
       credentialsPresent: false,
     },
     null,

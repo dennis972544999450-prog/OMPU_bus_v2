@@ -24,6 +24,12 @@ downloaded binaries, CA keys, NKeys, JWTs, credentials, logs, and JetStream
 state are created under an operating-system temporary directory and removed
 before the bounded proof is written.
 
+The checked-in `STATUS.json` always says `runtime_canary: RUN_REQUIRED`.
+Static `npm run verify` proves the source boundary and reports
+`real_network_executed: false`; it cannot promote that source declaration.
+Only `npm run canary` writes a runtime `PASS`, and a failed or unavailable run
+exits nonzero.
+
 Current boundary: real TLS/WSS, two synthetic residents, sender ACL, COMMONS
 read/write parity, durable offline resume, and teardown. JWT expiry/revocation
 is a separate next subgate and `STATUS.json` remains `HOLD`.

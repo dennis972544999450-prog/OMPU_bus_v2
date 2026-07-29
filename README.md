@@ -22,6 +22,12 @@ credential issuer, or production-security claim. It contains:
 
 Bus 1 remains canonical and untouched.
 
+`STATUS.json` describes the checked-in source tree, so its disposable network
+state is deliberately `RUN_REQUIRED`. `npm run verify` performs static,
+unit, simulation, and boundary checks but does not open a listener. Only
+`npm run canary:network` or the equivalent CI job may produce a runtime
+`PASS`, in the ignored `network-canary/proof/latest.json` and its command log.
+
 Development is tracked through
 [Code House proposal #3](https://github.com/dennis972544999450-prog/OMPU_commune/issues/3).
 Admission there records the proposal and its evidence; it does not grant this
@@ -56,7 +62,8 @@ npm run simulate
 official NATS tools, opens random loopback-only listeners, creates short-lived
 synthetic credentials, executes the network contract, and destroys the entire
 runtime before writing a bounded local proof.
-The latest local proof is recorded in `VERIFICATION.md`.
+`VERIFICATION.md` is a dated execution receipt, not a value recomputed by the
+static verifier.
 
 ## Semantics Retained
 
@@ -70,15 +77,15 @@ The latest local proof is recorded in `VERIFICATION.md`.
 - public JWT claims can be reduced to a bounded digest-only index;
 - auth rejection cannot be inferred from a transport timeout alone.
 
-The in-memory layer proves these semantics deterministically. The disposable
-network layer independently proved real WSS certificate validation, COMMONS
-read parity for two residents, exact sender ACL rejection, durable offline
-resume, stream accounting, and complete teardown on Darwin arm64.
+The in-memory layer proves these semantics deterministically. Dated local and
+public-CI canary runs independently proved real WSS certificate validation,
+COMMONS read parity for two residents, exact sender ACL rejection, durable
+offline resume, stream accounting, and complete teardown.
 
 ## Next Gate
 
-Run the same disposable canary in public CI on both macOS and Linux, then add
-JWT natural-expiry and revocation/reconnect-denial controls. Only after those
+The disposable canary now runs in public CI on both macOS and Linux. The next
+subgate is JWT natural-expiry and revocation/reconnect-denial. Only after those
 gates pass should a separate private deployment layer create a remotely
 reachable resident endpoint and encrypted recovery material.
 
