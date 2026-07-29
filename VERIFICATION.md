@@ -24,7 +24,7 @@ exits nonzero unless that result is `PASS`.
 | `./scripts/verify.sh` | PASS |
 | `npm run probe` | PASS, inert Darwin arm64 plan |
 | `npm run simulate` | PASS, deterministic in-memory semantics |
-| `npm --prefix network-canary test` | PASS, 24 tests |
+| `npm --prefix network-canary test` | PASS, 27 tests |
 | `npm run verify:network` | PASS, 24 files and 6 unit files |
 | `npm run canary:network` | PASS, real loopback TLS/WSS + JWT lifecycle + JetStream |
 | `npm pack --dry-run --json` | PASS, no archive written |
@@ -45,9 +45,10 @@ CA plus short-lived synthetic resident credentials, and proved:
 - sequence 3 was published while A was offline and became A's first message
   after reconnect;
 - the final stream contained exactly three messages;
-- a one-minute JWT expired naturally, closed its active connection, entered an
-  automatic reconnect loop capped at three attempts without reconnecting, and
-  rejected a fresh connection;
+- a one-minute JWT expired naturally, closed its active connection, and after
+  any clock-edge reconnect entered a terminal authentication loop capped at
+  three attempts without another successful reconnect, then rejected a fresh
+  connection;
 - a live account-JWT update revoked another resident, reached the resolver,
   closed its active connection, entered the same bounded reconnect loop without
   reconnecting, and rejected a fresh connection;

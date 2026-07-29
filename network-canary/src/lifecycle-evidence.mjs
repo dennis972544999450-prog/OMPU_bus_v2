@@ -54,34 +54,40 @@ export function assessReconnectSequence(statuses, kind, maxAttempts = 3) {
   const lastReconnectIndex = statuses.findLastIndex(
     (status) => status?.type === "reconnect",
   );
+  const terminalStartIndex = lastReconnectIndex + 1;
+  const terminal = statuses.slice(terminalStartIndex);
   const lifecycleIndex = statuses.findIndex(
     (status, index) =>
-      index > lastReconnectIndex &&
+      index >= terminalStartIndex &&
       status?.type === "error" &&
       expectedPattern(kind).test(errorText(status.error)),
   );
-  const postLifecycle =
-    lifecycleIndex >= 0 ? statuses.slice(lifecycleIndex) : [];
   const total = statusCounts(statuses);
-  const afterLifecycle = statusCounts(postLifecycle);
-  const observedReconnectAttempts = afterLifecycle.reconnecting;
+  const afterLastSuccess = statusCounts(terminal);
+  const observedReconnectAttempts = afterLastSuccess.reconnecting;
+  const terminalAuthError = terminal.some(
+    (status) =>
+      status?.type === "error" && AUTH_PATTERN.test(errorText(status.error)),
+  );
   return Object.freeze({
     pass:
-      lifecycleIndex >= 0 &&
       total.disconnect >= 1 &&
+      terminalAuthError &&
       observedReconnectAttempts >= 1 &&
       observedReconnectAttempts <= maxAttempts &&
-      afterLifecycle.reconnect === 0 &&
-      afterLifecycle.error >= observedReconnectAttempts &&
-      afterLifecycle.close === 1,
+      afterLastSuccess.reconnect === 0 &&
+      afterLastSuccess.error >= observedReconnectAttempts &&
+      afterLastSuccess.close === 1,
     lifecycle_index: lifecycleIndex,
     last_successful_reconnect_index: lastReconnectIndex,
+    terminal_start_index: terminalStartIndex,
     configured_max_reconnect_attempts: maxAttempts,
     observed_reconnect_attempts: observedReconnectAttempts,
+    terminal_auth_error: terminalAuthError,
     lifecycle_error:
       lifecycleIndex >= 0 ? statuses[lifecycleIndex].error : null,
     status_counts: total,
-    post_lifecycle_status_counts: afterLifecycle,
+    post_lifecycle_status_counts: afterLastSuccess,
   });
 }
 
@@ -154,12 +160,21 @@ export function assessLifecycleRejection({
     controlBound &&
     serverExplicitAuth &&
     serverActorBound;
+  const controlledActiveDenial =
+    phase === "active-close" &&
+    controlBound &&
+    clientResult?.pass === true &&
+    serverExplicitAuth &&
+    serverActorBound;
   const expectedLifecycleEvent =
-    clientExpectedLifecycle || controlledFreshDenial;
+    clientExpectedLifecycle ||
+    controlledFreshDenial ||
+    controlledActiveDenial;
   const transportObserved = TRANSPORT_PATTERN.test(combined);
 
   return Object.freeze({
     pass:
+      clientResult?.pass === true &&
       clientResult?.outcome === expectedOutcome &&
       attemptBound &&
       actorBound &&
@@ -180,6 +195,7 @@ export function assessLifecycleRejection({
     client_expected_lifecycle: clientExpectedLifecycle,
     server_expected_lifecycle: serverExpectedLifecycle,
     controlled_fresh_denial: controlledFreshDenial,
+    controlled_active_denial: controlledActiveDenial,
     expected_lifecycle_event: expectedLifecycleEvent,
     transport_observed: transportObserved,
     evidence_sha256: sha256(combined),

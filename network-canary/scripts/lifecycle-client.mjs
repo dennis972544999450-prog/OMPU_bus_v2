@@ -220,7 +220,9 @@ async function main() {
   writeBoundedJson(requiredString("resultPath"), result);
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   const resultPath = config.resultPath;
   if (typeof resultPath === "string" && resultPath.length > 0) {
     writeBoundedJson(resultPath, {
@@ -232,4 +234,4 @@ main().catch((error) => {
     });
   }
   process.exitCode = 1;
-});
+}
