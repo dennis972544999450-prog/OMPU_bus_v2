@@ -69,6 +69,7 @@ function lifecycleLogExcerpt(pathname, offset) {
 
 function lifecycleChildConfig({
   mode,
+  kind,
   credentialsPath,
   attemptId,
   label,
@@ -78,6 +79,7 @@ function lifecycleChildConfig({
 }) {
   return {
     mode,
+    kind,
     credentialsPath,
     attemptId,
     label,
@@ -99,6 +101,7 @@ function lifecycleChildEnv(config, caCert) {
 
 async function startAwaitCloseFixture({
   runtime,
+  kind,
   credentialsPath,
   attemptId,
   label,
@@ -117,6 +120,7 @@ async function startAwaitCloseFixture({
       env: lifecycleChildEnv(
         lifecycleChildConfig({
           mode: "await-close",
+          kind,
           credentialsPath,
           attemptId,
           label,
@@ -204,6 +208,7 @@ function runRejectedFixture({
       env: lifecycleChildEnv(
         lifecycleChildConfig({
           mode: "expect-rejected",
+          kind,
           credentialsPath,
           attemptId,
           label,
@@ -425,6 +430,7 @@ try {
   const wssUrl = `wss://localhost:${wssPort}`;
   const expiryHandle = await startAwaitCloseFixture({
     runtime,
+    kind: "expiry",
     credentialsPath: trust.credentials.expiring,
     attemptId: randomUUID(),
     label: "synthetic-expiring",
@@ -442,6 +448,11 @@ try {
     requireServerActor: false,
     serverLog,
   });
+  const expiryClaim = trust.lifecycleClaims.expiring;
+  const expiryControlBound =
+    expiryClosed.client.pass &&
+    expiryClosed.evidence.pass &&
+    Math.floor(Date.now() / 1000) >= expiryClaim.expires_at;
   const expiryReconnect = runRejectedFixture({
     kind: "expiry",
     credentialsPath: trust.credentials.expiring,
@@ -452,9 +463,9 @@ try {
     expectedActorSha256: trust.lifecycleClaims.expiring.subject_sha256,
     actorPublicKey: trust.lifecycleClaims.expiring.subject,
     requireServerActor: false,
+    controlBound: expiryControlBound,
     serverLog,
   });
-  const expiryClaim = trust.lifecycleClaims.expiring;
   const expiryHealthyControl = runHealthyControl({
     credentialsPath: trust.credentials.b,
     label: "expiry-healthy-control",
@@ -470,6 +481,7 @@ try {
       expiryReconnect.client.pass &&
       expiryReconnect.evidence.pass &&
       expiryHealthyControl.pass &&
+      expiryControlBound &&
       expiryHandle.ready.ready_at < expiryClaim.expires_at &&
       Math.floor(Date.now() / 1000) >= expiryClaim.expires_at,
     claim: publicLifecycleClaim(expiryClaim),
@@ -488,6 +500,7 @@ try {
 
   const revocationHandle = await startAwaitCloseFixture({
     runtime,
+    kind: "revocation",
     credentialsPath: trust.credentials.revocable,
     attemptId: randomUUID(),
     label: "synthetic-revocable",

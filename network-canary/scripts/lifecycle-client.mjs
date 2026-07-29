@@ -9,7 +9,10 @@ import {
   safeError,
   writeBoundedJson,
 } from "../src/safety.mjs";
-import { credentialActorSubjectSha256 } from "../src/lifecycle-evidence.mjs";
+import {
+  assessReconnectSequence,
+  credentialActorSubjectSha256,
+} from "../src/lifecycle-evidence.mjs";
 
 const config = JSON.parse(
   process.env.OMPU_NETWORK_LIFECYCLE_CLIENT || "{}",
@@ -83,10 +86,11 @@ async function awaitServerClose() {
           status.type === "reconnect" ||
           status.type === "close"
         ) {
-          statuses.push({ type: status.type });
+          statuses.push({ type: status.type, at: Date.now() });
         } else if (status.type === "error") {
           statuses.push({
             type: status.type,
+            at: Date.now(),
             error: safeError(status.error),
           });
         }
@@ -116,30 +120,22 @@ async function awaitServerClose() {
       };
     }
     await statusTask;
-    const lifecycleStatusError = statuses
-      .filter((status) => status.type === "error")
-      .map((status) => status.error)
-      .find((error) => /expired|revok/i.test(error?.message || ""));
-    const counts = Object.fromEntries(
-      ["disconnect", "reconnecting", "reconnect", "error", "close"].map(
-        (type) => [
-          type,
-          statuses.filter((status) => status.type === type).length,
-        ],
-      ),
+    const sequence = assessReconnectSequence(
+      statuses,
+      requiredString("kind"),
+      3,
     );
     return {
       attempt_id: requiredString("attemptId"),
       actor_subject_sha256: actor,
-      pass:
-        counts.disconnect >= 1 &&
-        counts.reconnecting >= 1 &&
-        counts.reconnect === 0,
+      pass: sequence.pass,
       outcome: "connected-then-server-closed",
       error:
-        lifecycleStatusError ||
+        sequence.lifecycle_error ||
         (result.error ? safeError(result.error) : null),
-      status_counts: counts,
+      status_counts: sequence.status_counts,
+      post_lifecycle_status_counts:
+        sequence.post_lifecycle_status_counts,
     };
   } finally {
     bytes.fill(0);

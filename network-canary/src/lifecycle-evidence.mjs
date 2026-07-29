@@ -33,6 +33,52 @@ function expectedPattern(kind) {
   throw new Error(`unknown lifecycle evidence kind: ${kind}`);
 }
 
+function statusCounts(statuses) {
+  return Object.fromEntries(
+    ["disconnect", "reconnecting", "reconnect", "error", "close"].map(
+      (type) => [
+        type,
+        statuses.filter((status) => status.type === type).length,
+      ],
+    ),
+  );
+}
+
+export function assessReconnectSequence(statuses, kind, maxAttempts = 3) {
+  if (!Array.isArray(statuses)) {
+    throw new TypeError("statuses must be an array");
+  }
+  if (!Number.isSafeInteger(maxAttempts) || maxAttempts < 1) {
+    throw new TypeError("maxAttempts must be a positive integer");
+  }
+  const lastReconnectIndex = statuses.findLastIndex(
+    (status) => status?.type === "reconnect",
+  );
+  const lifecycleIndex = statuses.findIndex(
+    (status, index) =>
+      index > lastReconnectIndex &&
+      status?.type === "error" &&
+      expectedPattern(kind).test(errorText(status.error)),
+  );
+  const postLifecycle =
+    lifecycleIndex >= 0 ? statuses.slice(lifecycleIndex) : [];
+  const total = statusCounts(statuses);
+  const afterLifecycle = statusCounts(postLifecycle);
+  return Object.freeze({
+    pass:
+      lifecycleIndex >= 0 &&
+      total.disconnect >= 1 &&
+      afterLifecycle.reconnecting === maxAttempts &&
+      afterLifecycle.reconnect === 0,
+    lifecycle_index: lifecycleIndex,
+    last_successful_reconnect_index: lastReconnectIndex,
+    lifecycle_error:
+      lifecycleIndex >= 0 ? statuses[lifecycleIndex].error : null,
+    status_counts: total,
+    post_lifecycle_status_counts: afterLifecycle,
+  });
+}
+
 export function credentialActorSubjectSha256(bytes) {
   const text = new TextDecoder().decode(bytes);
   const pattern = new RegExp(
@@ -97,13 +143,13 @@ export function assessLifecycleRejection({
   const serverExplicitAuth = AUTH_PATTERN.test(server);
   const clientExpectedLifecycle = expectedPattern(kind).test(client);
   const serverExpectedLifecycle = expectedPattern(kind).test(server);
+  const controlledFreshDenial =
+    phase === "fresh-connect" &&
+    controlBound &&
+    serverExplicitAuth &&
+    serverActorBound;
   const expectedLifecycleEvent =
-    clientExpectedLifecycle ||
-    (
-      kind === "revocation" &&
-      phase === "fresh-connect" &&
-      controlBound
-    );
+    clientExpectedLifecycle || controlledFreshDenial;
   const transportObserved = TRANSPORT_PATTERN.test(combined);
 
   return Object.freeze({
@@ -127,6 +173,7 @@ export function assessLifecycleRejection({
     server_explicit_auth: serverExplicitAuth,
     client_expected_lifecycle: clientExpectedLifecycle,
     server_expected_lifecycle: serverExpectedLifecycle,
+    controlled_fresh_denial: controlledFreshDenial,
     expected_lifecycle_event: expectedLifecycleEvent,
     transport_observed: transportObserved,
     evidence_sha256: sha256(combined),

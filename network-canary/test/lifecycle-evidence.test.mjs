@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   assessLifecycleRejection,
+  assessReconnectSequence,
   credentialActorSubjectSha256,
 } from "../src/lifecycle-evidence.mjs";
 
@@ -33,6 +34,67 @@ test("credential actor parser accepts canonical asymmetric delimiters", () => {
     credentialActorSubjectSha256(syntheticCredential(actor)).length,
     64,
   );
+});
+
+test("pre-lifecycle reconnects do not contaminate denial accounting", () => {
+  const sequence = assessReconnectSequence(
+    [
+      { type: "disconnect" },
+      {
+        type: "error",
+        error: { message: "User Authentication Expired" },
+      },
+      { type: "reconnecting" },
+      { type: "reconnect" },
+      {
+        type: "error",
+        error: { message: "User Authentication Expired" },
+      },
+      { type: "disconnect" },
+      { type: "reconnecting" },
+      { type: "error", error: { message: "Authorization Violation" } },
+      { type: "reconnecting" },
+      { type: "error", error: { message: "Authorization Violation" } },
+      { type: "reconnecting" },
+      { type: "close" },
+    ],
+    "expiry",
+  );
+  assert.equal(sequence.pass, true);
+  assert.equal(sequence.status_counts.reconnect, 1);
+  assert.equal(sequence.post_lifecycle_status_counts.reconnect, 0);
+  assert.equal(sequence.post_lifecycle_status_counts.reconnecting, 3);
+});
+
+test("post-lifecycle reconnect success fails closed", () => {
+  const sequence = assessReconnectSequence(
+    [
+      { type: "disconnect" },
+      { type: "error", error: { message: "User Authentication Revoked" } },
+      { type: "reconnecting" },
+      { type: "reconnect" },
+      { type: "reconnecting" },
+      { type: "reconnecting" },
+    ],
+    "revocation",
+  );
+  assert.equal(sequence.pass, false);
+  assert.equal(sequence.lifecycle_index, -1);
+  assert.equal(sequence.last_successful_reconnect_index, 3);
+});
+
+test("truncated reconnect sequence fails closed", () => {
+  const sequence = assessReconnectSequence(
+    [
+      { type: "disconnect" },
+      { type: "error", error: { message: "User Authentication Expired" } },
+      { type: "reconnecting" },
+      { type: "reconnecting" },
+    ],
+    "expiry",
+  );
+  assert.equal(sequence.pass, false);
+  assert.equal(sequence.post_lifecycle_status_counts.reconnecting, 2);
 });
 
 test("timeout cannot prove natural expiry", () => {
@@ -123,6 +185,53 @@ test("fresh expiry evidence proves a server-closed session", () => {
   });
   assert.equal(evidence.pass, true);
   assert.equal(evidence.expected_lifecycle_event, true);
+});
+
+test("generic actor-bound auth cannot prove fresh expiry without control", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "expiry",
+    phase: "fresh-connect",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: false,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "connect-threw",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "Authorization Violation",
+      },
+    },
+    serverExcerpt: `authentication error for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, false);
+  assert.equal(evidence.controlled_fresh_denial, false);
+});
+
+test("controlled actor-bound server denial proves fresh expiry", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "expiry",
+    phase: "fresh-connect",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: false,
+    controlBound: true,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "connect-threw",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "Authorization Violation",
+      },
+    },
+    serverExcerpt: `authentication error for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, true);
+  assert.equal(evidence.controlled_fresh_denial, true);
 });
 
 test("generic actor-bound auth cannot prove revocation", () => {

@@ -24,7 +24,7 @@ exits nonzero unless that result is `PASS`.
 | `./scripts/verify.sh` | PASS |
 | `npm run probe` | PASS, inert Darwin arm64 plan |
 | `npm run simulate` | PASS, deterministic in-memory semantics |
-| `npm --prefix network-canary test` | PASS, 18 tests |
+| `npm --prefix network-canary test` | PASS, 23 tests |
 | `npm run verify:network` | PASS, 24 files and 6 unit files |
 | `npm run canary:network` | PASS, real loopback TLS/WSS + JWT lifecycle + JetStream |
 | `npm pack --dry-run --json` | PASS, no archive written |
