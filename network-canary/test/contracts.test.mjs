@@ -17,6 +17,11 @@ test("resident publish ACLs are disjoint", () => {
   assert.equal(b.pub.includes(SUBJECT_A), false);
 });
 
+test("lifecycle fixtures have no application subjects", () => {
+  assert.deepEqual(userPermissions("expiring"), { pub: [], sub: [] });
+  assert.deepEqual(userPermissions("revocable"), { pub: [], sub: [] });
+});
+
 test("server config binds both transports to loopback", () => {
   const config = buildServerConfig("operator: synthetic", {
     clientPort: 4223,

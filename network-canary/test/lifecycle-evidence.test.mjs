@@ -1,0 +1,246 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  assessLifecycleRejection,
+  credentialActorSubjectSha256,
+} from "../src/lifecycle-evidence.mjs";
+
+const ATTEMPT = "attempt-1";
+const ACTOR = `U${"A".repeat(55)}`;
+const ACTOR_SHA = "a".repeat(64);
+
+function syntheticCredential(subject) {
+  const header = Buffer.from(JSON.stringify({ alg: "synthetic" })).toString(
+    "base64url",
+  );
+  const payload = Buffer.from(JSON.stringify({ sub: subject })).toString(
+    "base64url",
+  );
+  const jwt = `${header}.${payload}.synthetic`;
+  return new TextEncoder().encode(
+    [
+      `${"-".repeat(5)}${["BEGIN NATS", "USER JWT"].join(" ")}${"-".repeat(5)}`,
+      jwt,
+      `${"-".repeat(6)}${["END NATS", "USER JWT"].join(" ")}${"-".repeat(6)}`,
+    ].join("\n"),
+  );
+}
+
+test("credential actor parser accepts canonical asymmetric delimiters", () => {
+  const actor = `U${"C".repeat(55)}`;
+  assert.equal(
+    credentialActorSubjectSha256(syntheticCredential(actor)).length,
+    64,
+  );
+});
+
+test("timeout cannot prove natural expiry", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "expiry",
+    phase: "active-close",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: false,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "timeout",
+      error: { code: "TIMEOUT", message: "timed out" },
+    },
+    serverExcerpt: `authentication error for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, false);
+  assert.equal(evidence.transport_observed, true);
+});
+
+test("generic connection refusal cannot prove revocation", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "revocation",
+    phase: "fresh-connect",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: true,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "connect-threw",
+      error: {
+        code: "CONNECTION_REFUSED",
+        message: "connect ECONNREFUSED",
+      },
+    },
+    serverExcerpt: `authentication error for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, false);
+  assert.equal(evidence.transport_observed, true);
+});
+
+test("client auth error without a fresh server event fails closed", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "revocation",
+    phase: "fresh-connect",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: true,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "connect-threw",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "Authorization Violation",
+      },
+    },
+    serverExcerpt: "",
+  });
+  assert.equal(evidence.pass, false);
+  assert.equal(evidence.client_explicit_auth, true);
+  assert.equal(evidence.server_explicit_auth, false);
+});
+
+test("fresh expiry evidence proves a server-closed session", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "expiry",
+    phase: "active-close",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: false,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "connected-then-server-closed",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "User Authentication Expired",
+      },
+    },
+    serverExcerpt: `authentication error for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, true);
+  assert.equal(evidence.expected_lifecycle_event, true);
+});
+
+test("generic actor-bound auth cannot prove revocation", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "revocation",
+    phase: "fresh-connect",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: true,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "connect-threw",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "Authorization Violation",
+      },
+    },
+    serverExcerpt: `authentication error for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, false);
+  assert.equal(evidence.expected_lifecycle_event, false);
+});
+
+test("fresh revocation evidence proves reconnect denial", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "revocation",
+    phase: "fresh-connect",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: true,
+    controlBound: true,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "connect-threw",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "Authorization Violation",
+      },
+    },
+    serverExcerpt: `user authentication revoked for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, true);
+  assert.equal(evidence.expected_lifecycle_event, true);
+});
+
+test("auth line for another actor cannot be mixed into a pass", () => {
+  const otherActor = `U${"B".repeat(55)}`;
+  const evidence = assessLifecycleRejection({
+    kind: "revocation",
+    phase: "fresh-connect",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: true,
+    controlBound: true,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "connect-threw",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "Authorization Violation",
+      },
+    },
+    serverExcerpt: `user authentication revoked for ${otherActor}`,
+  });
+  assert.equal(evidence.pass, false);
+  assert.equal(evidence.actor_bound, true);
+  assert.equal(evidence.server_actor_bound, false);
+});
+
+test("client proof for another actor cannot be mixed into a pass", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "expiry",
+    phase: "active-close",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: false,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: "b".repeat(64),
+      outcome: "connected-then-server-closed",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "User Authentication Expired",
+      },
+    },
+    serverExcerpt: "",
+  });
+  assert.equal(evidence.pass, false);
+  assert.equal(evidence.actor_bound, false);
+});
+
+test("mixed auth and transport evidence fails closed", () => {
+  const evidence = assessLifecycleRejection({
+    kind: "revocation",
+    phase: "fresh-connect",
+    attemptId: ATTEMPT,
+    expectedActorSha256: ACTOR_SHA,
+    actorPublicKey: ACTOR,
+    requireServerActor: true,
+    controlBound: true,
+    clientResult: {
+      attempt_id: ATTEMPT,
+      actor_subject_sha256: ACTOR_SHA,
+      outcome: "connect-threw",
+      error: {
+        code: "AUTHORIZATION_VIOLATION",
+        message: "Authorization Violation after ECONNREFUSED",
+      },
+    },
+    serverExcerpt: `user authentication revoked for ${ACTOR}`,
+  });
+  assert.equal(evidence.pass, false);
+  assert.equal(evidence.transport_observed, true);
+});

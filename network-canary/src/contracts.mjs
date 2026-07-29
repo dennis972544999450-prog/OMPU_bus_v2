@@ -47,6 +47,12 @@ export function userPermissions(kind) {
       sub: ["_INBOX.OMPU.NET.B.>"],
     };
   }
+  if (kind === "expiring" || kind === "revocable") {
+    return {
+      pub: [],
+      sub: [],
+    };
+  }
   throw new Error(`unknown permission kind: ${kind}`);
 }
 

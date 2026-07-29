@@ -73,20 +73,24 @@ static verifier.
 - a resident may publish only to its own subject;
 - message-ID retry is idempotent within the model;
 - each resident has an independent monotonic cursor;
-- a revoked synthetic resident cannot reconnect or publish.
+- an expired or revoked synthetic resident cannot reconnect or publish;
 - public JWT claims can be reduced to a bounded digest-only index;
 - auth rejection cannot be inferred from a transport timeout alone.
 
 The in-memory layer proves these semantics deterministically. Dated local and
 public-CI canary runs independently proved real WSS certificate validation,
 COMMONS read parity for two residents, exact sender ACL rejection, durable
-offline resume, stream accounting, and complete teardown.
+offline resume, stream accounting, natural JWT expiry, resolver-backed
+revocation, bounded automatic reconnect denial, a healthy-resident control,
+and complete teardown.
 
 ## Next Gate
 
-The disposable canary now runs in public CI on both macOS and Linux. The next
-subgate is JWT natural-expiry and revocation/reconnect-denial. Only after those
-gates pass should a separate private deployment layer create a remotely
-reachable resident endpoint and encrypted recovery material.
+The disposable canary now runs in public CI on both macOS and Linux, and its
+JWT lifecycle gate passes locally. The next gate is a separate private
+deployment layer: create a remotely reachable resident endpoint, enroll one
+external synthetic resident, rotate and revoke it, then rebuild the service
+from an encrypted recovery bundle.
 
-Until that proof passes, `STATUS.json:external_resident` remains `HOLD`.
+Until that private recovery drill passes,
+`STATUS.json:external_resident` remains `HOLD`.

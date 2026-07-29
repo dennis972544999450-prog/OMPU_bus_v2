@@ -24,6 +24,7 @@ export function createDisposableRuntime() {
   return {
     root,
     server: null,
+    children: [],
     ports: [],
   };
 }
@@ -74,14 +75,21 @@ export async function waitForPort(port, child, timeout = 10_000) {
   throw new Error("WSS listener did not open before deadline");
 }
 
-async function waitForExit(child, timeout) {
+export async function waitForProcessExit(child, timeout) {
   if (!child || child.exitCode !== null || child.signalCode !== null) {
     return true;
   }
-  return await Promise.race([
-    new Promise((resolve) => child.once("exit", () => resolve(true))),
-    delay(timeout).then(() => false),
-  ]);
+  return await new Promise((resolve) => {
+    const onExit = () => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    const timer = setTimeout(() => {
+      child.removeListener("exit", onExit);
+      resolve(false);
+    }, timeout);
+    child.once("exit", onExit);
+  });
 }
 
 export async function stopTrackedProcess(child) {
@@ -89,11 +97,28 @@ export async function stopTrackedProcess(child) {
     return true;
   }
   child.kill("SIGTERM");
-  if (!(await waitForExit(child, 4_000))) {
+  if (!(await waitForProcessExit(child, 4_000))) {
     child.kill("SIGKILL");
-    await waitForExit(child, 2_000);
+    await waitForProcessExit(child, 2_000);
   }
   return child.exitCode !== null || child.signalCode !== null;
+}
+
+export async function waitForFile(pathname, child, timeout = 10_000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if (existsSync(pathname)) {
+      return;
+    }
+    if (
+      child &&
+      (child.exitCode !== null || child.signalCode !== null)
+    ) {
+      throw new Error("tracked process exited before writing its marker");
+    }
+    await delay(50);
+  }
+  throw new Error("tracked process did not write its marker before deadline");
 }
 
 function assertDisposableRoot(root) {
@@ -110,7 +135,13 @@ function assertDisposableRoot(root) {
 
 export async function cleanupRuntime(runtime) {
   assertDisposableRoot(runtime.root);
-  const processExited = await stopTrackedProcess(runtime.server);
+  const childResults = [];
+  for (const child of runtime.children || []) {
+    childResults.push(await stopTrackedProcess(child));
+  }
+  const serverExited = await stopTrackedProcess(runtime.server);
+  const processExited =
+    serverExited && childResults.every(Boolean);
   const listenerResults = [];
   for (const port of runtime.ports) {
     const deadline = Date.now() + 3_000;
@@ -123,6 +154,7 @@ export async function cleanupRuntime(runtime) {
   const runtimeRemoved = !existsSync(runtime.root);
   return {
     process_exited: processExited,
+    child_processes_exited: childResults.every(Boolean),
     listeners_closed: listenerResults.every(Boolean),
     runtime_removed: runtimeRemoved,
     credentials_removed: runtimeRemoved,
